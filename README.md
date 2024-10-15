@@ -11,34 +11,34 @@ Before you begin, ensure you have the following:
 
 ## Setup
 
-1. fork & clone the repository:
+1. fork or clone this repository:
 
-   ```sh
-   git clone https://github.com/<yourusername>/gemini-telegram.git
+   ```bash
+   git clone https://github.com/debinum/gemini-telegram.git
    cd gemini-telegram
    ```
 
 2. Copy `.env.example` to `.env`:
 
-   ```sh
+   ```bash
    cp .env.example .env
    ```
 
 3. Open the `.env` file and add your Gemini API Key and Telegram Bot Token:
 
    ```env
-   API_KEY=your_gemini_api_key
-   TOKEN=your_telegram_bot_token
+   APIKEY="your_gemini_api_key"
+   TOKEN="your_telegram_bot_token"
    ```
 
 4. Install the required dependencies:
 
-   ```sh
+   ```bash
    yarn install
    ```
 
-5. Run the bot:
-   ```sh
+5. Run the bot in development:
+   ```bash
    yarn dev
    ```
 
