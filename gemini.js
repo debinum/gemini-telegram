@@ -9,7 +9,7 @@ const fs = require("fs");
 const db = require("./db");
 require("dotenv").config();
 
-const aiPrompt = fs.readFileSync("./prompts/codie.txt", { encoding: 'utf8' });
+const aiPrompt = fs.readFileSync("./prompts/codie.txt", { encoding: "utf8" });
 
 const genAI = new GoogleGenerativeAI(process.env.APIKEY);
 
@@ -42,7 +42,7 @@ async function geminiReply(userId, userMessage, fullname) {
   try {
     await db.addMessage(userId, userMessage, "user");
     const history = await db.getHistory(userId);
-    console.log("History: ", history);
+    // console.log("History: ", history);
 
     const chat = unifiedModel.startChat({
       history,
@@ -81,9 +81,16 @@ async function geminiReply(userId, userMessage, fullname) {
   }
 }
 
-async function geminiVision(userId, mediaBuffer, mimetype, userMessage, fullname) {
+async function geminiVision(
+  userId,
+  mediaBuffer,
+  mimetype,
+  userMessage,
+  fullname,
+) {
   try {
-    const prompt = userMessage || "Please provide a detailed description of the image.";
+    const prompt =
+      userMessage || "Please provide a detailed description of the image.";
     console.log(fullname + ": " + prompt);
 
     const history = await db.getHistory(userId);

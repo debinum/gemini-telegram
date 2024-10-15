@@ -1,0 +1,397 @@
+
+db.js
+// db.js
+
+const sqlite3 = require("sqlite3").verbose();
+const db = new sqlite3.Database("./db/history.db");
+
+// Initialize the database
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId TEXT,
+    role TEXT,
+    message TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+});
+
+module.exports = {
+  getHistory: (userId) => {
+    return new Promise((resolve, reject) => {
+      db.all(
+        "SELECT role, message FROM messages WHERE userId = ? ORDER BY timestamp ASC LIMIT 30",
+        [userId],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            const history = rows.map((row) => ({
+              role: row.role,
+              parts: [{ text: row.message }],
+            }));
+            resolve(history);
+          }
+        },
+      );
+    });
+  },
+
+  addMessage: (userId, message, role) => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        "INSERT INTO messages (userId, role, message) VALUES (?, ?, ?)",
+        [userId, role, message],
+        (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
+  },
+
+  errorTemplateMessage: (userId, message) => {
+    return Promise.all([
+      module.exports.addMessage(userId, message, "user"),
+      module.exports.addMessage(userId, "Astaghfirullah 😌", "model"),
+    ]);
+  },
+
+  addGeminiVisionChat: (userId, message, role) => {
+    return module.exports.addMessage(userId, message, role);
+  },
+
+  clearLastTwo: (userId) => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        "DELETE FROM messages WHERE userId = ? AND id IN (SELECT id FROM messages WHERE userId = ? ORDER BY timestamp DESC LIMIT 2)",
+        [userId, userId],
+        (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
+  },
+
+  clearHistory: (userId) => {
+    return new Promise((resolve, reject) => {
+      db.run("DELETE FROM messages WHERE userId = ?", [userId], (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          console.log("Chat history cleared");
+          resolve();
+        }
+      });
+    });
+  },
+
+  clearAllHistory: () => {
+    return new Promise((resolve, reject) => {
+      db.run("DELETE FROM messages", (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          console.log("All chat history cleared");
+          resolve();
+        }
+      });
+    });
+  },
+};
+
+gemini.js
+// gemini.js
+
+const {
+  GoogleGenerativeAI,
+  HarmBlockThreshold,
+  HarmCategory,
+} = require("@google/generative-ai");
+const fs = require("fs");
+const db = require("./db");
+require("dotenv").config();
+
+const aiPrompt = fs.readFileSync("./prompts/codie.txt", { encoding: "utf8" });
+
+const genAI = new GoogleGenerativeAI(process.env.APIKEY);
+
+const safetySettings = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_NONE,
+  },
+];
+
+const unifiedModel = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  systemInstruction: aiPrompt,
+  safetySettings,
+});
+
+async function geminiReply(userId, userMessage, fullname) {
+  try {
+    await db.addMessage(userId, userMessage, "user");
+    const history = await db.getHistory(userId);
+    // console.log("History: ", history);
+
+    const chat = unifiedModel.startChat({
+      history,
+      generationConfig: {
+        maxOutputTokens: 1000,
+      },
+    });
+
+    console.log(fullname + ": " + userMessage);
+    const result = await chat.sendMessage(userMessage);
+    const response = await result.response.text();
+    console.log("Gemini: " + response + "\n");
+
+    if (!response || response.trim() === "") {
+      await db.clearLastTwo(userId);
+      return "Fetch failed";
+    } else {
+      await db.addMessage(userId, response, "model");
+      return response;
+    }
+  } catch (error) {
+    console.error("Error in geminiReply: ", error);
+    if (error.message.includes("fetch failed")) {
+      return "Fetch failed";
+    } else if (error.message.includes("blocked due to SAFETY")) {
+      await db.clearLastTwo(userId);
+      await db.errorTemplateMessage(
+        userId,
+        "(Words are not clear from the user!)",
+      );
+      return "Astaghfirullah 😌";
+    } else {
+      await db.errorTemplateMessage(userId, "(There was an error!)");
+      return "Sorry, an error occurred. Please try again!";
+    }
+  }
+}
+
+async function geminiVision(
+  userId,
+  mediaBuffer,
+  mimetype,
+  userMessage,
+  fullname,
+) {
+  try {
+    const prompt =
+      userMessage || "Please provide a detailed description of the image.";
+    console.log(fullname + ": " + prompt);
+
+    const history = await db.getHistory(userId);
+    const chat = unifiedModel.startChat({
+      history,
+      generationConfig: {
+        maxOutputTokens: 1000,
+      },
+    });
+
+    const imageParts = [
+      {
+        inlineData: {
+          data: mediaBuffer,
+          mimeType: mimetype,
+        },
+      },
+    ];
+
+    await db.addGeminiVisionChat(
+      userId,
+      "(An image is attached) " + prompt,
+      "user",
+    );
+
+    const result = await chat.sendMessage([prompt, ...imageParts]);
+    const textResult = await result.response.text();
+
+    console.log("Gemini: " + textResult + "\n");
+
+    if (!textResult || textResult.trim() === "") {
+      await db.clearLastTwo(userId);
+      return "Fetch failed";
+    } else {
+      await db.addGeminiVisionChat(userId, textResult, "model");
+      return textResult;
+    }
+  } catch (error) {
+    console.error("Error in geminiVision: ", error);
+    if (error.message.includes("fetch failed")) {
+      return "Fetch failed";
+    } else if (error.message.includes("blocked due to SAFETY")) {
+      await db.clearLastTwo(userId);
+      await db.errorTemplateMessage(
+        userId,
+        "(Indecent or inappropriate images sent by user!)",
+      );
+      return "Astaghfirullah 😌";
+    } else {
+      await db.errorTemplateMessage(userId, "(There was an error!)");
+      return "Sorry, an error occurred. Please try again!";
+    }
+  }
+}
+
+module.exports = {
+  geminiReply,
+  geminiVision,
+};
+
+index.js
+// index.js
+
+const { Bot } = require("grammy");
+require("dotenv").config();
+const chatHistory = require("./db");
+const gemini = require("./gemini");
+const axios = require("axios");
+
+const bot = new Bot(process.env.TOKEN);
+
+function escapeMarkdownV2(text) {
+  return text.replace(/([_*[\]()~`>#+-=|{}.!])/g, "\\$1");
+}
+
+bot.command("start", (ctx) =>
+  ctx.reply("Welcome! Send me a message to get started."),
+);
+
+bot.on("message:text", async (ctx) => {
+  try {
+    async function generateTextFromText() {
+      let response = await gemini.geminiReply(userId, userMessage, fullname);
+
+      while (response === "Fetch failed") {
+        response = await gemini.geminiReply(userId, userMessage, fullname);
+      }
+
+      if (response !== "Fetch failed") {
+        const maxLength = 4096;
+        const chunks = response.match(new RegExp(`.{1,${maxLength}}`, "g"));
+
+        let markdownMessage = "";
+        for (const chunk of chunks) {
+          markdownMessage += escapeMarkdownV2(chunk) + "\n";
+        }
+
+        await ctx.reply(markdownMessage, { parse_mode: "MarkdownV2" });
+      }
+    }
+
+    const userId = ctx.from.id;
+    const fullname = [ctx.from.first_name, ctx.from.last_name]
+      .filter(Boolean)
+      .join(" ");
+    const userMessage = ctx.message.text;
+    const isClear = userMessage.toLowerCase() === "clear";
+
+    if (isClear) {
+      await chatHistory.clearHistory(userId);
+      await ctx.reply("Chat history cleared.");
+    } else {
+      await generateTextFromText();
+    }
+  } catch (error) {
+    console.log("Error: ", error);
+  }
+});
+
+bot.on("message:photo", async (ctx) => {
+  try {
+    function getMimetypeFromExtension(path) {
+      const extension = path.split(".").pop();
+      switch (extension) {
+        case "jpg":
+        case "jpeg":
+          return "image/jpeg";
+        case "png":
+          return "image/png";
+        case "gif":
+          return "image/gif";
+        default:
+          return "application/octet-stream";
+      }
+    }
+
+    async function generateTextFromImage() {
+      const userId = ctx.from.id;
+      const fullname = [ctx.from.first_name, ctx.from.last_name]
+        .filter(Boolean)
+        .join(" ");
+      const userMessage = ctx.message.caption;
+
+      let textResult = await gemini.geminiVision(
+        userId,
+        mediaBuffer,
+        mimetype,
+        userMessage,
+        fullname,
+      );
+
+      while (textResult === "Fetch failed") {
+        textResult = await gemini.geminiVision(
+          userId,
+          mediaBuffer,
+          mimetype,
+          userMessage,
+          fullname,
+        );
+      }
+
+      if (textResult !== "Fetch failed") {
+        const maxLength = 4096;
+        const chunks = textResult.match(new RegExp(`.{1,${maxLength}}`, "g"));
+
+        let markdownMessage = "";
+        for (const chunk of chunks) {
+          markdownMessage += escapeMarkdownV2(chunk) + "\n";
+        }
+
+        await ctx.reply(markdownMessage, { parse_mode: "MarkdownV2" });
+      }
+    }
+
+    const file = await ctx.getFile();
+    const path = file.file_path;
+    const onlinePath =
+      "https://api.telegram.org/file/bot" + process.env.TOKEN + "/" + path;
+
+    const response = await axios.get(onlinePath, {
+      responseType: "arraybuffer",
+    });
+
+    const mediaBuffer = Buffer.from(response.data).toString("base64");
+    const mimetype = getMimetypeFromExtension(path);
+
+    generateTextFromImage();
+  } catch (error) {
+    console.log("Error: ", error);
+  }
+});
+
+bot.start();
+

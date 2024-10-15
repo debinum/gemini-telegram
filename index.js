@@ -13,7 +13,7 @@ function escapeMarkdownV2(text) {
 }
 
 bot.command("start", (ctx) =>
-  ctx.reply("Welcome! Send me a message to get started.")
+  ctx.reply("Welcome! Send me a message to get started."),
 );
 
 bot.on("message:text", async (ctx) => {
@@ -39,7 +39,9 @@ bot.on("message:text", async (ctx) => {
     }
 
     const userId = ctx.from.id;
-    const fullname = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ');
+    const fullname = [ctx.from.first_name, ctx.from.last_name]
+      .filter(Boolean)
+      .join(" ");
     const userMessage = ctx.message.text;
     const isClear = userMessage.toLowerCase() === "clear";
 
@@ -73,7 +75,9 @@ bot.on("message:photo", async (ctx) => {
 
     async function generateTextFromImage() {
       const userId = ctx.from.id;
-      const fullname = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ');
+      const fullname = [ctx.from.first_name, ctx.from.last_name]
+        .filter(Boolean)
+        .join(" ");
       const userMessage = ctx.message.caption;
 
       let textResult = await gemini.geminiVision(
@@ -81,7 +85,7 @@ bot.on("message:photo", async (ctx) => {
         mediaBuffer,
         mimetype,
         userMessage,
-        fullname
+        fullname,
       );
 
       while (textResult === "Fetch failed") {
@@ -90,7 +94,7 @@ bot.on("message:photo", async (ctx) => {
           mediaBuffer,
           mimetype,
           userMessage,
-          fullname
+          fullname,
         );
       }
 
@@ -109,7 +113,8 @@ bot.on("message:photo", async (ctx) => {
 
     const file = await ctx.getFile();
     const path = file.file_path;
-    const onlinePath = "https://api.telegram.org/file/bot" + process.env.TOKEN + "/" + path;
+    const onlinePath =
+      "https://api.telegram.org/file/bot" + process.env.TOKEN + "/" + path;
 
     const response = await axios.get(onlinePath, {
       responseType: "arraybuffer",
