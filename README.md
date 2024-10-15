@@ -6,41 +6,41 @@ This project is a Telegram bot that interacts with the Gemini API.
 
 Before you begin, ensure you have the following:
 
--   Gemini API Key
--   Telegram Bot Token
+- Gemini API Key
+- Telegram Bot Token
 
 ## Setup
 
-1. Clone the repository:
+1. fork & clone the repository:
 
-    ```sh
-    git clone https://github.com/yourusername/gemini-telegram.git
-    cd gemini-telegram
-    ```
+   ```sh
+   git clone https://github.com/<yourusername>/gemini-telegram.git
+   cd gemini-telegram
+   ```
 
-2. Rename `.env.example` to `.env`:
+2. Copy `.env.example` to `.env`:
 
-    ```sh
-    mv .env.example .env
-    ```
+   ```sh
+   cp .env.example .env
+   ```
 
 3. Open the `.env` file and add your Gemini API Key and Telegram Bot Token:
 
-    ```env
-    API_KEY=your_gemini_api_key
-    TOKEN=your_telegram_bot_token
-    ```
+   ```env
+   API_KEY=your_gemini_api_key
+   TOKEN=your_telegram_bot_token
+   ```
 
 4. Install the required dependencies:
 
-    ```sh
-    npm install
-    ```
+   ```sh
+   yarn install
+   ```
 
 5. Run the bot:
-    ```sh
-    node app
-    ```
+   ```sh
+   yarn dev
+   ```
 
 ## Usage
 

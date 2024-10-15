@@ -1,9 +1,39 @@
 {
+  "name": "gemini-telegram",
+  "version": "0.0.1",
+  "description": "A gemini AI API telegram chat bot.",
+  "main": "index.js",
+  "scripts": {
+    "start": "forever index.js",
+    "dev": "nodemon index.js",
+    "lint": "prettier -w .",
+    "test": "echo \"Computer says NO!\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/debinum/gemini-telegram.git"
+  },
+  "keywords": [
+    "telegram",
+    "gemini",
+    "google",
+    "ai",
+    "chat"
+  ],
+  "author": "Daryl Ebinum",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/debinum/gemini-telegram/issues"
+  },
+  "homepage": "https://github.com/debinum/gemini-telegram#readme",
   "dependencies": {
-    "@google/generative-ai": "^0.19.0",
+    "@google/generative-ai": "^0.21.0",
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "grammy": "^1.30.0",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
   }
 }

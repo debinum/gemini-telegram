@@ -26,7 +26,7 @@ vendor/
 package-lock.json
 
 # Ignore chat files
-chat_history.db
+/db/history.db
 
 # Ignore git files
 .git/
