@@ -1,34 +1,30 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/javascript-node
 {
-  "name": "Node.js",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  "name": "ai-telegram-bot",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/eliises/devcontainer-features/devcontainers-cli:1": {},
-    "ghcr.io/devcontainers-community/npm-features/prettier:1": {},
-    "ghcr.io/prulloac/devcontainer-features/ollama:1": {}
+    "ghcr.io/warrenbuckley/codespace-features/sqlite:latest": {},
+    "ghcr.io/prulloac/devcontainer-features/ollama:1": {
+      "pull": "tinyllama"
+    }
   },
   "customizations": {
     "vscode": {
-      "extensions": ["monokai.theme-monokai-pro-vscode"]
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "includable.file-duplicate",
+        "GitHub.codespaces",
+        "christian-kohler.path-intellisense",
+        "esbenp.prettier-vscode",
+        "rjmacarthy.twinny",
+        "alexcvzz.vscode-sqlite",
+        "mads-hartmann.bash-ide-vscode",
+        "GitHub.github-vscode-theme"
+      ]
     }
   },
-
-  // Features to add to the dev container. More info: https://containers.dev/features.
-  // "features": {},
-
-  // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  // "forwardPorts": [],
-
-  // Use 'postCreateCommand' to run commands after the container is created.
-  "postCreateCommand": "yarn install"
-
-  // Configure tool-specific properties.
-  // "customizations": {},
-
-  // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-  // "remoteUser": "root"
+  "postCreateCommand": "npm i -g npm@latest && npm i -g yarn@latest && npm i -g nodemon@latest && npm i -g forever@latest && yarn install",
+  "hostRequirements": {
+    "cpus": 4
+  }
 }
